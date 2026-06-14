@@ -9,8 +9,8 @@ from telegram.ext import (
     CallbackQueryHandler, ConversationHandler, filters, ContextTypes
 )
 # ─── НАСТРОЙКИ ────────────────────────────────────────────────────────────────
-BOT_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"          # @BotFather → /newbot
-DRIVER_GROUP_ID = -1001234567890               # ID группы водителей (отрицательное число)
+BOT_TOKEN = 8153371774:AAGYiqq5IrwyTXAzcauYxBY4L5mFKTN70hc          # @BotFather → /newbot
+DRIVER_GROUP_ID =    483191317            # ID группы водителей (отрицательное число)
 BASE_PRICE = 8500                              # Базовая цена поездки в тенге
 # ─── ШАГИ ДИАЛОГА ─────────────────────────────────────────────────────────────
 NAME, PHONE, FROM_ADDR, TO_ADDR, CONFIRM = range(5)
