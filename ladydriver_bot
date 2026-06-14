@@ -18,8 +18,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "\U0001f44b Привет! Я бот сервиса LadyDriver\n"
         "Женский трезвый водитель в Алматы \U0001f697\n\n"
         "Оформлю заказ за 1 минуту!\n\n"
-        "Как 
-вас зовут?"
+        "Как вас зовут?"
     )
     return NAME
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -109,8 +108,7 @@ async def take_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=client_id,
             text=(
-                "\u2705 
-Водитель назначен!\n\n"
+                "\u2705 Водитель назначен!\n\n"
                 "Имя: " + driver_name + "\n"
                 "Контакт: " + driver_username + "\n\n"
                 "Водитель уже выехала к вам! \U0001f338"
