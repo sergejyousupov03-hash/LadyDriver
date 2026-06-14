@@ -9,8 +9,8 @@ from telegram.ext import (
     CallbackQueryHandler, ConversationHandler, filters, ContextTypes
 )
 # ─── НАСТРОЙКИ ────────────────────────────────────────────────────────────────
-BOT_TOKEN = 8153371774:AAGYiqq5IrwyTXAzcauYxBY4L5mFKTN70hc          # @BotFather → /newbot
-DRIVER_GROUP_ID =    483191317            # ID группы водителей (отрицательное число)
+BOT_TOKEN = "8153371774:AAGYiqq5IrwyTXAzcauYxBY4L5mFKTN70hc"          # @BotFather → /newbot
+DRIVER_GROUP_ID = 483191317            # ID группы водителей (отрицательное число)
 BASE_PRICE = 8500                              # Базовая цена поездки в тенге
 # ─── ШАГИ ДИАЛОГА ─────────────────────────────────────────────────────────────
 NAME, PHONE, FROM_ADDR, TO_ADDR, CONFIRM = range(5)
@@ -22,8 +22,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         " Привет! Я бот сервиса *LadyDriver* — женский трезвый водитель в Алматы.\n\n"
         "Оформлю заказ за 1 минуту \n\n"
-        "Как 
-вас зовут?",
+        "Как вас зовут?",
         parse_mode="Markdown"
     )
     return NAME
@@ -49,8 +48,7 @@ async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_from(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["from_addr"] = update.message.text.strip()
     await update.message.reply_text(
-        "
- *Куда едем?*\n\n"
+        "*Куда едем?*\n\n"
         "Введите адрес назначения:",
         parse_mode="Markdown"
     )
@@ -80,51 +78,36 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     if query.data == "cancel":
-        await query.edit_message_text("
+        await query.edit_message_text(" Заказ отменён. Нажмите /start чтобы начать заново.")
         return ConversationHandler.END
- Заказ отменён. Нажмите /start чтобы начать заново.")
     d = context.user_data
     client_id = query.from_user.id
     order_id = f"{client_id % 10000:04d}"
-    # 
-Сохраняем ID клиента для обратной связи
+    # Сохраняем ID клиента для обратной связи
     context.bot_data[f"order_{order_id}"] = client_id
     await query.edit_message_text(
-        "
- *Заказ принят!*\n\n"
-        "Мы 
-        "Вы 
-        " 
-        " 
-уже ищем ближайшего водителя.\n"
-получите уведомление, как только водитель будет назначен.\n\n"
-Среднее время ожидания: 10–15 минут\n"
-По вопросам: @ladydriver\\_almaty",
+        " *Заказ принят!*\n\n"
+        "Мы уже ищем ближайшего водителя.\n"
+        "Вы получите уведомление, как только водитель будет назначен.\n\n"
+        "Среднее время ожидания: 10–15 минут\n"
+        "По вопросам: @ladydriver\\_almaty",
         parse_mode="Markdown"
     )
-    # 
-Отправляем карточку заказа в группу водителей
+    # Отправляем карточку заказа в группу водителей
     driver_keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton(" Взять заказ", callback_data=f"take_{order_id}_{client_id}")]
     ])
     await context.bot.send_message(
         chat_id=DRIVER_GROUP_ID,
         text=(
-            f"
- *НОВЫЙ ЗАКАЗ #{order_id}*\n\n"
-            f" 
-            f" 
-            f" 
-            f" 
-            f" 
-            f" 
+            f" *НОВЫЙ ЗАКАЗ #{order_id}*\n\n"
+            f" Клиент: {d['name']}\n"
+            f" Телефон: {d['phone']}\n"
+            f" Откуда: {d['from_addr']}\n"
+            f" Куда: {d['to_addr']}\n"
+            f" Сумма: *{BASE_PRICE:,} тенге*\n\n"
+            f" Первая, кто нажмёт — берёт заказ!"
         ),
-Клиент: {d['name']}\n"
-Телефон: {d['phone']}\n"
-Откуда: {d['from_addr']}\n"
-Куда: {d['to_addr']}\n"
-Сумма: *{BASE_PRICE:,} тенге*\n\n"
-Первая, кто нажмёт — берёт заказ!"
         parse_mode="Markdown",
         reply_markup=driver_keyboard
     )
@@ -139,27 +122,21 @@ async def take_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     driver = query.from_user
     driver_name = driver.first_name or "Водитель"
     driver_username = f"@{driver.username}" if driver.username else "нет username"
-    # 
-Обновляем карточку в группе — блокируем повторное нажатие
+    # Обновляем карточку в группе — блокируем повторное нажатие
     await query.edit_message_text(
         query.message.text + f"\n\n *Взяла: {driver_name}* ({driver_username})",
         parse_mode="Markdown"
     )
-    # 
-Уведомляем клиента
+    # Уведомляем клиента
     try:
         await context.bot.send_message(
             chat_id=client_id,
             text=(
-                f"
- *Водитель назначен!*\n\n"
-                f"
-                f" 
- {driver_name}\n"
-Контакт: {driver_username}\n\n"
+                f" *Водитель назначен!*\n\n"
+                f" {driver_name}\n"
+                f"Контакт: {driver_username}\n\n"
                 f"Водитель уже выехала к вам \n"
-                f"Если 
-вопросы — пишите напрямую водителю."
+                f"Если вопросы — пишите напрямую водителю."
             ),
             parse_mode="Markdown"
         )
