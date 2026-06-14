@@ -1,160 +1,128 @@
+# -*- coding: utf-8 -*
 import logging
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     CallbackQueryHandler, ConversationHandler, filters, ContextTypes
 )
-
-BOT_TOKEN = "8153371774:AAGYiqq5IrwyTXAzcauYxBY4L5mFKTN70hc"
-DRIVER_GROUP_ID = -483191317
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_TOKEN_HERE")
+DRIVER_GROUP_ID = int(os.environ.get("DRIVER_GROUP_ID", "-1001234567890"))
 BASE_PRICE = 8500
-
 NAME, PHONE, FROM_ADDR, TO_ADDR, CONFIRM = range(5)
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
-        "Privet! Ya bot servisa LadyDriver - zhenskiy trezvyy voditel v Almaty.\n\n"
-        "Oformlu zakaz za 1 minutu!\n\n"
-        "Kak vas zovut?"
+        "\U0001f44b Привет! Я бот сервиса LadyDriver\n"
+        "Женский трезвый водитель в Алматы \U0001f697\n\n"
+        "Оформлю заказ за 1 минуту!\n\n"
+        "Как 
+вас зовут?"
     )
     return NAME
-
-
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text.strip()
     await update.message.reply_text(
-        "Priyatno poznakomitsya, " + context.user_data["name"] + "!\n\n"
-        "Vvedite vash nomer telefona:\n(naprimer: +7 777 123 45 67)"
+        "Приятно познакомиться, " + context.user_data["name"] + "! \U0001f60a\n\n"
+        "Введите ваш номер телефона:\n(например: +7 777 123 45 67)"
     )
     return PHONE
-
-
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["phone"] = update.message.text.strip()
     await update.message.reply_text(
-        "Otkuda vas zabrat?\n\n"
-        "Napishite adres ili nazvanie zavedeniya:"
+        "\U0001f4cd Откуда вас забрать?\n\n"
+        "Напишите адрес или название заведения:"
     )
     return FROM_ADDR
-
-
 async def get_from(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["from_addr"] = update.message.text.strip()
     await update.message.reply_text(
-        "Kuda edem?\n\n"
-        "Vvedite adres naznacheniya:"
+        "\U0001f3c1 Куда едем?\n\n"
+        "Введите адрес назначения:"
     )
     return TO_ADDR
-
-
 async def get_to(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["to_addr"] = update.message.text.strip()
     d = context.user_data
-
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Podtverdit zakaz", callback_data="confirm")],
-        [InlineKeyboardButton("Otmenit", callback_data="cancel")],
+        [InlineKeyboardButton("\u2705 Подтвердить заказ", callback_data="confirm")],
+        [InlineKeyboardButton("\u274c Отменить", callback_data="cancel")],
     ])
-
-    await update.message.reply_text(
-        "Proverite zakaz:\n\n"
-        "Imya: " + d["name"] + "\n"
-        "Telefon: " + d["phone"] + "\n"
-        "Otkuda: " + d["from_addr"] + "\n"
-        "Kuda: " + d["to_addr"] + "\n"
-        "Stoimost: " + str(BASE_PRICE) + " tenge\n\n"
-        "Oplata nalichnymi ili Kaspi posle poezdki.",
-        reply_markup=keyboard
+    text = (
+        "\U0001f4cb Проверьте заказ:\n\n"
+        "\U0001f464 Имя: " + d["name"] + "\n"
+        "\U0001f4de Телефон: " + d["phone"] + "\n"
+        "\U0001f4cd Откуда: " + d["from_addr"] + "\n"
+        "\U0001f3c1 Куда: " + d["to_addr"] + "\n"
+        "\U0001f4b0 Стоимость: " + str(BASE_PRICE) + " тенге\n\n"
+        "\U0001f512 Оплата наличными или Kaspi после поездки."
     )
+    await update.message.reply_text(text, reply_markup=keyboard)
     return CONFIRM
-
-
 async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     if query.data == "cancel":
-        await query.edit_message_text("Zakaz otmenen. Nazhite /start chtoby nachat zanovo.")
+        await query.edit_message_text("Заказ отменён. Нажмите /start чтобы начать заново.")
         return ConversationHandler.END
-
     d = context.user_data
     client_id = query.from_user.id
-    order_id = f"{client_id % 10000:04d}"
-
-    context.bot_data[f"order_{order_id}"] = client_id
-
+    order_id = str(client_id % 10000).zfill(4)
+    context.bot_data["order_" + order_id] = client_id
     await query.edit_message_text(
-        "Zakaz prinyat!\n\n"
-        "My uzhe ishchem blizhayshego voditelya.\n"
-        "Vy poluchite uvedomlenie, kak tolko voditel budet naznachen.\n\n"
-        "Srednee vremya ozhidaniya: 10-15 minut"
+        "\U0001f389 Заказ принят!\n\n"
+        "Ищем ближайшего водителя...\n"
+        "Среднее время ожидания: 10-15 минут \U0001f338"
     )
-
     driver_keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Vzyat zakaz", callback_data=f"take_{order_id}_{client_id}")]
+        [InlineKeyboardButton("\U0001f697 Взять заказ", callback_data="take_" + order_id + "_" + str(client_id))]
     ])
-
+    msg = (
+        "\U0001f195 НОВЫЙ ЗАКАЗ #" + order_id + "\n\n"
+        "\U0001f464 Клиент: " + d["name"] + "\n"
+        "\U0001f4de Телефон: " + d["phone"] + "\n"
+        "\U0001f4cd Откуда: " + d["from_addr"] + "\n"
+        "\U0001f3c1 Куда: " + d["to_addr"] + "\n"
+        "\U0001f4b0 Сумма: " + str(BASE_PRICE) + " тенге\n\n"
+        "Первая, кто нажмёт — берёт заказ!"
+    )
     await context.bot.send_message(
         chat_id=DRIVER_GROUP_ID,
-        text=(
-            "NOVYY ZAKAZ #" + order_id + "\n\n"
-            "Klient: " + d["name"] + "\n"
-            "Telefon: " + d["phone"] + "\n"
-            "Otkuda: " + d["from_addr"] + "\n"
-            "Kuda: " + d["to_addr"] + "\n"
-            "Summa: " + str(BASE_PRICE) + " tenge\n\n"
-            "Pervaya, kto nazhmyot - beryot zakaz!"
-        ),
+        text=msg,
         reply_markup=driver_keyboard
     )
-
     return ConversationHandler.END
-
-
 async def take_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     parts = query.data.split("_")
-    order_id = parts[1]
     client_id = int(parts[2])
-
     driver = query.from_user
-    driver_name = driver.first_name or "Voditel"
-    driver_username = f"@{driver.
-username}" if driver.username else "net username"
-
+    driver_name = driver.first_name or "Водитель"
+    driver_username = "@" + driver.username if driver.username else "нет username"
     await query.edit_message_text(
-        query.message.text + "\n\nVzyala: " + driver_name + " (" + driver_username + ")"
+        query.message.text + "\n\n\u2705 Взяла: " + driver_name + " (" + driver_username + ")"
     )
-
     try:
         await context.bot.send_message(
             chat_id=client_id,
             text=(
-                "Voditel naznachen!\n\n"
-                "Imya: " + driver_name + "\n"
-                "Kontakt: " + driver_username + "\n\n"
-                "Voditel uzhe vyekhala k vam!"
+                "\u2705 
+Водитель назначен!\n\n"
+                "Имя: " + driver_name + "\n"
+                "Контакт: " + driver_username + "\n\n"
+                "Водитель уже выехала к вам! \U0001f338"
             )
         )
     except Exception as e:
-        logger.error(f"Error notifying client {client_id}: {e}")
-
-
+        logger.error("Error notifying client: " + str(e))
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Zakaz otmenen. Nazhite /start chtoby nachat zanovo.")
+    await update.message.reply_text("Заказ отменён. Нажмите /start чтобы начать заново.")
     return ConversationHandler.END
-
-
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
-
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -166,13 +134,9 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
-
     app.add_handler(conv)
-    app.add_handler(CallbackQueryHandler(take_order, pattern=r"^take_"))
-
+    app.add_handler(CallbackQueryHandler(take_order, pattern="^take_"))
     print("LadyDriver bot started!")
-    app.run_polling()
-
-
+    app.run_polling(drop_pending_updates=True)
 if __name__ == "__main__":
     main()
