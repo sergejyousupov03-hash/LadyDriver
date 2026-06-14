@@ -1,1 +1,1 @@
-worker: python ladydriver_bot.py
+worker: ladydriver_bot.py
