@@ -1,0 +1,193 @@
+"""
+LadyDriver Bot — Трезвый женский водитель, Алматы
+Требования: pip install python-telegram-bot==20.7
+"""
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler,
+    CallbackQueryHandler, ConversationHandler, filters, ContextTypes
+)
+# ─── НАСТРОЙКИ ────────────────────────────────────────────────────────────────
+BOT_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"          # @BotFather → /newbot
+DRIVER_GROUP_ID = -1001234567890               # ID группы водителей (отрицательное число)
+BASE_PRICE = 8500                              # Базовая цена поездки в тенге
+# ─── ШАГИ ДИАЛОГА ─────────────────────────────────────────────────────────────
+NAME, PHONE, FROM_ADDR, TO_ADDR, CONFIRM = range(5)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+# ─── СТАРТ ────────────────────────────────────────────────────────────────────
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
+    await update.message.reply_text(
+        " Привет! Я бот сервиса *LadyDriver* — женский трезвый водитель в Алматы.\n\n"
+        "Оформлю заказ за 1 минуту \n\n"
+        "Как 
+вас зовут?",
+        parse_mode="Markdown"
+    )
+    return NAME
+# ─── ШАГ 1: ИМЯ ───────────────────────────────────────────────────────────────
+async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["name"] = update.message.text.strip()
+    await update.message.reply_text(
+        f"Приятно познакомиться, {context.user_data['name']}! \n\n"
+        "Введите ваш номер телефона:\n_(например: +7 777 123 45 67)_",
+        parse_mode="Markdown"
+    )
+    return PHONE
+# ─── ШАГ 2: ТЕЛЕФОН ───────────────────────────────────────────────────────────
+async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["phone"] = update.message.text.strip()
+    await update.message.reply_text(
+        " *Откуда вас забрать?*\n\n"
+        "Напишите адрес или название заведения:",
+        parse_mode="Markdown"
+    )
+    return FROM_ADDR
+# ─── ШАГ 3: АДРЕС ПОДАЧИ ──────────────────────────────────────────────────────
+async def get_from(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["from_addr"] = update.message.text.strip()
+    await update.message.reply_text(
+        "
+ *Куда едем?*\n\n"
+        "Введите адрес назначения:",
+        parse_mode="Markdown"
+    )
+    return TO_ADDR
+# ─── ШАГ 4: АДРЕС НАЗНАЧЕНИЯ ──────────────────────────────────────────────────
+async def get_to(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["to_addr"] = update.message.text.strip()
+    d = context.user_data
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(" Подтвердить заказ", callback_data="confirm")],
+        [InlineKeyboardButton(" Отменить", callback_data="cancel")],
+    ])
+    await update.message.reply_text(
+        f" *Проверьте заказ:*\n\n"
+        f" Имя: {d['name']}\n"
+        f" Телефон: {d['phone']}\n"
+        f" Откуда: {d['from_addr']}\n"
+        f" Куда: {d['to_addr']}\n"
+        f" Стоимость: *{BASE_PRICE:,} тенге*\n\n"
+        f" Оплата наличными или Kaspi после поездки.",
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+    return CONFIRM
+# ─── ШАГ 5: ПОДТВЕРЖДЕНИЕ ─────────────────────────────────────────────────────
+async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.data == "cancel":
+        await query.edit_message_text("
+        return ConversationHandler.END
+ Заказ отменён. Нажмите /start чтобы начать заново.")
+    d = context.user_data
+    client_id = query.from_user.id
+    order_id = f"{client_id % 10000:04d}"
+    # 
+Сохраняем ID клиента для обратной связи
+    context.bot_data[f"order_{order_id}"] = client_id
+    await query.edit_message_text(
+        "
+ *Заказ принят!*\n\n"
+        "Мы 
+        "Вы 
+        " 
+        " 
+уже ищем ближайшего водителя.\n"
+получите уведомление, как только водитель будет назначен.\n\n"
+Среднее время ожидания: 10–15 минут\n"
+По вопросам: @ladydriver\\_almaty",
+        parse_mode="Markdown"
+    )
+    # 
+Отправляем карточку заказа в группу водителей
+    driver_keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(" Взять заказ", callback_data=f"take_{order_id}_{client_id}")]
+    ])
+    await context.bot.send_message(
+        chat_id=DRIVER_GROUP_ID,
+        text=(
+            f"
+ *НОВЫЙ ЗАКАЗ #{order_id}*\n\n"
+            f" 
+            f" 
+            f" 
+            f" 
+            f" 
+            f" 
+        ),
+Клиент: {d['name']}\n"
+Телефон: {d['phone']}\n"
+Откуда: {d['from_addr']}\n"
+Куда: {d['to_addr']}\n"
+Сумма: *{BASE_PRICE:,} тенге*\n\n"
+Первая, кто нажмёт — берёт заказ!"
+        parse_mode="Markdown",
+        reply_markup=driver_keyboard
+    )
+    return ConversationHandler.END
+# ─── ВОДИТЕЛЬ БЕРЁТ ЗАКАЗ ─────────────────────────────────────────────────────
+async def take_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    parts = query.data.split("_")           # take_ORDERID_CLIENTID
+    order_id = parts[1]
+    client_id = int(parts[2])
+    driver = query.from_user
+    driver_name = driver.first_name or "Водитель"
+    driver_username = f"@{driver.username}" if driver.username else "нет username"
+    # 
+Обновляем карточку в группе — блокируем повторное нажатие
+    await query.edit_message_text(
+        query.message.text + f"\n\n *Взяла: {driver_name}* ({driver_username})",
+        parse_mode="Markdown"
+    )
+    # 
+Уведомляем клиента
+    try:
+        await context.bot.send_message(
+            chat_id=client_id,
+            text=(
+                f"
+ *Водитель назначен!*\n\n"
+                f"
+                f" 
+ {driver_name}\n"
+Контакт: {driver_username}\n\n"
+                f"Водитель уже выехала к вам \n"
+                f"Если 
+вопросы — пишите напрямую водителю."
+            ),
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        logger.error(f"Не удалось уведомить клиента {client_id}: {e}")
+# ─── ОТМЕНА В ЛЮБОЙ МОМЕНТ ────────────────────────────────────────────────────
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Заказ отменён. Нажмите /start чтобы начать заново. "
+    )
+    return ConversationHandler.END
+# ─── ЗАПУСК ───────────────────────────────────────────────────────────────────
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
+    conv = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            NAME:     [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
+            PHONE:    [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
+            FROM_ADDR:[MessageHandler(filters.TEXT & ~filters.COMMAND, get_from)],
+            TO_ADDR:  [MessageHandler(filters.TEXT & ~filters.COMMAND, get_to)],
+            CONFIRM:  [CallbackQueryHandler(confirm_order, pattern="^(confirm|cancel)$")],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+    app.add_handler(conv)
+    app.add_handler(CallbackQueryHandler(take_order, pattern=r"^take_"))
+    print(" LadyDriver бот запущен!")
+    app.run_polling()
+if __name__ == "__main__":
+    main()
