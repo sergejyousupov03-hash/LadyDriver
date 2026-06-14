@@ -3,13 +3,16 @@ LadyDriver Bot — Трезвый женский водитель, Алматы
 Требования: pip install python-telegram-bot==20.7
 """
 import logging
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     CallbackQueryHandler, ConversationHandler, filters, ContextTypes
 )
 # ─── НАСТРОЙКИ ────────────────────────────────────────────────────────────────
-BOT_TOKEN = 8153371774:AAGYiqq5IrwyTXAzcauYxBY4L5mFKTN70hc          # @BotFather → /newbot
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable is not set")  # @BotFather → /newbot
 DRIVER_GROUP_ID =    483191317            # ID группы водителей (отрицательное число)
 BASE_PRICE = 8500                              # Базовая цена поездки в тенге
 # ─── ШАГИ ДИАЛОГА ─────────────────────────────────────────────────────────────
